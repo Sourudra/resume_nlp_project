@@ -3,8 +3,8 @@ import pdfplumber
 import re
 from nltk.corpus import stopwords
 import nltk
-nltk.download('punkt')
-from model import extract_skills_resume, extract_skills_jd  , sw_semantic_similarity_from_bert 
+import matplotlib.pyplot as plt  # Import matplotlib for plotting
+from model import extract_skills_resume, extract_skills_jd, sw_semantic_similarity_from_bert
 
 # Streamlit app
 st.title("Resume and Job Description Matching")
@@ -12,6 +12,7 @@ st.title("Resume and Job Description Matching")
 st.header("Input Resume and Job Description for Matching")
 
 # Ensure NLTK stopwords are downloaded
+nltk.download('punkt')
 nltk.download('stopwords')
 
 def pdf_to_text(pdf_file):
@@ -51,46 +52,34 @@ st.write("Upload Resume as a PDF file")
 
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
-
-
-
 st.write("### Enter Job Description Text")
 job_description = st.text_area("Job Description", height=200)
-
-
-
-
 
 if st.button("Extract Skills and Check Match"):
     
     if uploaded_file is not None:
-     try:
-        with st.spinner('Extracting text from PDF...'):
-            text = pdf_to_text(uploaded_file)
-            st.success('Text extraction successful!')
+        try:
+            with st.spinner('Extracting text from PDF...'):
+                text = pdf_to_text(uploaded_file)
+                st.success('Text extraction successful!')
 
+                with st.spinner('Cleaning text...'):
+                    cleaned_text = clean(text)
+                    resume = cleaned_text
+                    st.success('Text cleaning successful!')
             
-
-            with st.spinner('Cleaning text...'):
-                cleaned_text = clean(text)
-                resume = cleaned_text
-                st.success('Text cleaning successful!')
-
-            
-     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+    
     if job_description is not None:
-     try:
-        with st.spinner('Cleaning job description text...'):
-            cleaned_job_description = clean(job_description)
-            jd = cleaned_job_description 
-
-            
-            st.success('Job description text cleaning successful!')
-
+        try:
+            with st.spinner('Cleaning job description text...'):
+                cleaned_job_description = clean(job_description)
+                jd = cleaned_job_description 
+                st.success('Job description text cleaning successful!')
         
-     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
     if resume and jd:
         # Extract skills
@@ -98,19 +87,43 @@ if st.button("Extract Skills and Check Match"):
         st.success('Extracting skills from Resume successful!')
         jd_skills = extract_skills_jd(jd)
         st.success('Extracting skills from Job Description successful!')
-        # Display extracted skills
-        if resume_skills:
-            st.write("**Resume Skills:**")
-            st.write(", ".join(resume_skills))
-        if jd_skills:
-            st.write("**Job Description Skills:**")
-            st.write(", ".join(jd_skills))
         
         # Check match using BERT
         if resume_skills and jd_skills:
             score, sim_count, match_count = sw_semantic_similarity_from_bert(jd_skills, resume_skills)
+            
+            # Calculate matching percentage
+            total_job_words = len(jd_skills)
+            num_matching_words = match_count + sim_count
+            matching_percentage = (num_matching_words / total_job_words) * 100
+            non_matching_percentage = 100 - matching_percentage
+            
+            # Plot the pie chart
+            labels = 'Matching Skills', 'Non-Matching Skills'
+            sizes = [matching_percentage, non_matching_percentage]
+            colors = ['#ff9999', '#66b3ff']
+            explode = (0.1, 0)  # explode the 1st slice
+            
+            fig1, ax1 = plt.subplots()
+            ax1.pie(sizes, explode=explode, labels=labels, colors=colors,
+                    autopct='%1.1f%%', shadow=True, startangle=90)
+            ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+            
+            st.pyplot(fig1)
+            
             st.write(f"Matching Score: {score:.2f}")
             st.write(f"Number of Exact Matches: {match_count}")
             st.write(f"Number of Similar Matches: {sim_count}")
+            
+            if resume_skills:
+                st.write("**Resume Skills:**")
+                st.write(", ".join(resume_skills))
+            if jd_skills:
+                st.write("**Job Description Skills:**")
+                st.write(", ".join(jd_skills))
+                
+        else:
+            st.write("No skills extracted from either resume or job description.")
+    
     else:
         st.write("Please provide both resume and job description.")
