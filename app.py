@@ -92,17 +92,11 @@ if st.button("Extract Skills and Check Match"):
         if resume_skills and jd_skills:
             score, sim_count, match_count = sw_semantic_similarity_from_bert(jd_skills, resume_skills)
             
-            # Calculate matching percentage
-            total_job_words = len(jd_skills)
-            num_matching_words = match_count + sim_count
-            matching_percentage = (num_matching_words / total_job_words) * 100
-            non_matching_percentage = 100 - matching_percentage
-            
-            # Plot the pie chart
+            # Plot the pie chart based on matching score
             labels = 'Matching Skills', 'Non-Matching Skills'
-            sizes = [matching_percentage, non_matching_percentage]
-            colors = ['#ff9999', '#66b3ff']
-            explode = (0.1, 0)  # explode the 1st slice
+            sizes = [score, 1 - score]  # Sizes based on matching score
+            colors = ['#2ca02c', '#d62728']  # Green and red colors
+            explode = (0.1, 0)  # Explode the first slice
             
             fig1, ax1 = plt.subplots()
             ax1.pie(sizes, explode=explode, labels=labels, colors=colors,
